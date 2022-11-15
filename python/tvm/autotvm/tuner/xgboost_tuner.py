@@ -19,6 +19,8 @@
 from .model_based_tuner import ModelBasedTuner, ModelOptimizer
 from .xgboost_cost_model import XGBoostCostModel
 from .sa_model_optimizer import SimulatedAnnealingOptimizer
+from .sampler import Sampler
+from .adaptive_sampler import AdaptiveSampler
 
 
 class XGBTuner(ModelBasedTuner):
@@ -80,6 +82,7 @@ class XGBTuner(ModelBasedTuner):
         loss_type="rank",
         num_threads=None,
         optimizer="sa",
+        sampler=None,
         diversity_filter_ratio=None,
         log_interval=50,
     ):
@@ -96,6 +99,13 @@ class XGBTuner(ModelBasedTuner):
             assert isinstance(optimizer, ModelOptimizer), (
                 "Optimizer must be " "a supported name string" "or a ModelOptimizer object."
             )
+        
+        if sampler == None:
+            sampler = None
+        elif sampler == 'adaptive':
+            sampler = AdaptiveSampler(plan_size)
+        else:
+            assert isinstance(sampler, Sampler), ("Sampler must be None," "a supported name string" "or a Sampler object.")
 
         super(XGBTuner, self).__init__(
             task, cost_model, optimizer, plan_size, diversity_filter_ratio
