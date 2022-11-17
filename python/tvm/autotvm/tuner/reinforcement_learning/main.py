@@ -1,4 +1,4 @@
-from ppo import *
+from .ppo import *
 import gym
 
 # TODO PARAMETERS

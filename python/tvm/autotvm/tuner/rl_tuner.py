@@ -1,4 +1,3 @@
-# pylint: disable=abstract-method
 """Tuner that uses reinforcement learning"""
 
 from .model_based_tuner import ModelBasedTuner, ModelOptimizer, CostModel
@@ -35,7 +34,7 @@ class RLTuner(ModelBasedTuner):
         super(RLTuner, self).__init__(task, cost_model, optimizer,
                                        plan_size, diversity_filter_ratio)
 
-    def tune(self, *args, **kwargs):  # pylint: disable=arguments-differ
+    def tune(self, *args, **kwargs):
         super(RLTuner, self).tune(*args, **kwargs)
 
         ## manually close pool to avoid multiprocessing issues

@@ -32,6 +32,7 @@ from tvm.autotvm.tuner import GATuner
 from tvm.autotvm.tuner import GridSearchTuner
 from tvm.autotvm.tuner import RandomTuner
 from tvm.autotvm.tuner import XGBTuner
+from tvm.autotvm.tuner import RLTuner
 from tvm.target import Target
 
 from . import TVMCException, composite_target, frontends
@@ -686,6 +687,8 @@ def tune_tasks(
             tuner_obj = RandomTuner(tsk)
         elif tuner == "gridsearch":
             tuner_obj = GridSearchTuner(tsk)
+        elif tuner == "reinforcement_learning":
+            tuner_obj = RLTuner(tsk,sampler="adaptive")
         else:
             raise TVMCException("invalid tuner: %s " % tuner)
 

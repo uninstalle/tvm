@@ -8,28 +8,28 @@ class PolicyWithValue:
         self.ob_space = observation_space
         self.act_space = action_space
 
-        with tf.variable_scope(name):
-            self.obs = tf.placeholder(dtype=tf.float32, shape=[None] + list(self.ob_space), name='observation')
+        with tf.compat.v1.variable_scope(name):
+            self.obs = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None] + list(self.ob_space), name='observation')
             
-            with tf.variable_scope('policy_net'):
-                layer_1 = tf.layers.dense(inputs=self.obs, units=20, activation=tf.tanh)
-                layer_2 = tf.layers.dense(inputs=layer_1, units=20, activation=tf.tanh)
-                layer_3 = tf.layers.dense(inputs=layer_2, units=self.act_space, activation=tf.tanh)
-                self.act_probs = tf.layers.dense(inputs=tf.divide(layer_3, temp), units=self.act_space, activation=tf.nn.softmax)
+            with tf.compat.v1.variable_scope('policy_net'):
+                layer_1 = tf.compat.v1.layers.dense(inputs=self.obs, units=20, activation=tf.tanh)
+                layer_2 = tf.compat.v1.layers.dense(inputs=layer_1, units=20, activation=tf.tanh)
+                layer_3 = tf.compat.v1.layers.dense(inputs=layer_2, units=self.act_space, activation=tf.tanh)
+                self.act_probs = tf.compat.v1.layers.dense(inputs=tf.divide(layer_3, temp), units=self.act_space, activation=tf.nn.softmax)
 
-            with tf.variable_scope('value_net'):
-                layer_1 = tf.layers.dense(inputs=self.obs, units=20, activation=tf.tanh)
-                layer_2 = tf.layers.dense(inputs=layer_1, units=20, activation=tf.tanh)
-                self.v_preds = tf.layers.dense(inputs=layer_2, units=1, activation=None)
+            with tf.compat.v1.variable_scope('value_net'):
+                layer_1 = tf.compat.v1.layers.dense(inputs=self.obs, units=20, activation=tf.tanh)
+                layer_2 = tf.compat.v1.layers.dense(inputs=layer_1, units=20, activation=tf.tanh)
+                self.v_preds = tf.compat.v1.layers.dense(inputs=layer_2, units=1, activation=None)
             
             # for stochastic
-            self.act_stochastic = tf.multinomial(tf.log(self.act_probs), num_samples=1)
+            self.act_stochastic = tf.random.categorical(logits=tf.math.log(self.act_probs), num_samples=1)
             self.act_stochastic = tf.reshape(self.act_stochastic, shape=[-1])
             
             # for deterministic
-            self.act_deterministic = tf.argmax(self.act_probs, axis=1)
+            self.act_deterministic = tf.argmax(input=self.act_probs, axis=1)
 
-            self.scope = tf.get_variable_scope().name
+            self.scope = tf.compat.v1.get_variable_scope().name
     
     def _get_action(self, sess, obs, stochastic=True):
         if stochastic:
@@ -38,13 +38,13 @@ class PolicyWithValue:
             return sess.run([self.act_deterministic, self.v_preds], feed_dict={self.obs: obs})
     
     def _get_trainable_variables(self):
-        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
+        return tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, self.scope)
 
 class PPOAgent:
     def __init__(self, policy, old_policy, horizon, learning_rate, epochs, 
                  batch_size, gamma, lmbd, clip_value, value_coeff, entropy_coeff):
-        self.sess = tf.Session()
-        self.writer = tf.summary.FileWriter('./log/train', self.sess.graph)
+        self.sess = tf.compat.v1.Session()
+        self.writer = tf.compat.v1.summary.FileWriter('./log/train', self.sess.graph)
 
         self.policy = policy
         self.old_policy = old_policy
@@ -75,54 +75,54 @@ class PPOAgent:
         old_pi_trainable = self.old_policy._get_trainable_variables()
         
         # assignment operation to update old_policy with policy
-        with tf.variable_scope('assign_op'):
+        with tf.compat.v1.variable_scope('assign_op'):
             self.assign_ops = []
             for v_old, v in zip(old_pi_trainable, pi_trainable):
-                self.assign_ops.append(tf.assign(v_old, v))
+                self.assign_ops.append(tf.compat.v1.assign(v_old, v))
 
         # inputs for train operation
-        with tf.variable_scope('train_input'):
-            self.actions = tf.placeholder(dtype=tf.int32, shape=[None], name='actions')
-            self.rewards = tf.placeholder(dtype=tf.float32, shape=[None], name='rewards')
-            self.v_preds_next = tf.placeholder(dtype=tf.float32, shape=[None], name='v_preds_next')
-            self.gaes = tf.placeholder(dtype=tf.float32, shape=[None], name='gaes')
+        with tf.compat.v1.variable_scope('train_input'):
+            self.actions = tf.compat.v1.placeholder(dtype=tf.int32, shape=[None], name='actions')
+            self.rewards = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None], name='rewards')
+            self.v_preds_next = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None], name='v_preds_next')
+            self.gaes = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None], name='gaes')
 
         act_probs = self.policy.act_probs
         act_probs_old = self.old_policy.act_probs
         
         # probability of actions chosen with the policy
         act_probs = act_probs * tf.one_hot(indices=self.actions, depth=act_probs.shape[1])
-        act_probs = tf.reduce_sum(act_probs, axis=1)
+        act_probs = tf.reduce_sum(input_tensor=act_probs, axis=1)
 
         # probabilities of actions which agent took with old policy
         act_probs_old = act_probs_old * tf.one_hot(indices=self.actions, depth=act_probs_old.shape[1])
-        act_probs_old = tf.reduce_sum(act_probs_old, axis=1)
+        act_probs_old = tf.reduce_sum(input_tensor=act_probs_old, axis=1)
 
         # clipped surrogate objective (7)
         # TODO adaptive KL penalty coefficient can be added (8)
-        with tf.variable_scope('loss/clip'):
-            ratios = tf.exp(tf.log(act_probs) - tf.log(act_probs_old))
+        with tf.compat.v1.variable_scope('loss/clip'):
+            ratios = tf.exp(tf.math.log(act_probs) - tf.math.log(act_probs_old))
             clipped_ratios = tf.clip_by_value(ratios, clip_value_min=1-clip_value, clip_value_max=1+clip_value)
             loss_clip = tf.minimum(tf.multiply(self.gaes, ratios), tf.multiply(self.gaes, clipped_ratios))
-            loss_clip = tf.reduce_mean(loss_clip)
-            tf.summary.scalar('loss_clip', loss_clip)
+            loss_clip = tf.reduce_mean(input_tensor=loss_clip)
+            tf.compat.v1.summary.scalar('loss_clip', loss_clip)
 
         # squared difference between value (9)
-        with tf.variable_scope('loss/value'):
+        with tf.compat.v1.variable_scope('loss/value'):
             v_preds = self.policy.v_preds
-            loss_v = tf.squared_difference(self.rewards + self.gamma * self.v_preds_next, v_preds)
-            loss_v = tf.reduce_mean(loss_v)
-            tf.summary.scalar('loss_value', loss_v)
+            loss_v = tf.math.squared_difference(self.rewards + self.gamma * self.v_preds_next, v_preds)
+            loss_v = tf.reduce_mean(input_tensor=loss_v)
+            tf.compat.v1.summary.scalar('loss_value', loss_v)
 
         # entropy bonus (9)
-        with tf.variable_scope('loss/entropy'):
-            entropy = -tf.reduce_sum(self.policy.act_probs * 
-                                     tf.log(tf.clip_by_value(self.policy.act_probs, 1e-10, 1.0)), axis=1)
-            entropy = tf.reduce_mean(entropy, axis=0)
-            tf.summary.scalar('entropy', entropy)
+        with tf.compat.v1.variable_scope('loss/entropy'):
+            entropy = -tf.reduce_sum(input_tensor=self.policy.act_probs * 
+                                     tf.math.log(tf.clip_by_value(self.policy.act_probs, 1e-10, 1.0)), axis=1)
+            entropy = tf.reduce_mean(input_tensor=entropy, axis=0)
+            tf.compat.v1.summary.scalar('entropy', entropy)
         
         # loss (9)
-        with tf.variable_scope('loss'):
+        with tf.compat.v1.variable_scope('loss'):
             # c_1 = value_coeff, c_2 = entropy_coeff
             # loss = (clipped loss) - c_1 * (value loss) + c_2 * (entropy bonus)
             loss = loss_clip - value_coeff * loss_v + entropy_coeff * entropy
@@ -130,16 +130,16 @@ class PPOAgent:
             # clipped loss : up
             # value loss : down
             # entropy : up
-            tf.summary.scalar('loss', loss)
+            tf.compat.v1.summary.scalar('loss', loss)
             
         # gradient ascent using adam optimizer
         loss = -loss
-        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate, epsilon=1e-5)
+        optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.learning_rate, epsilon=1e-5)
         self.train_op = optimizer.minimize(loss, var_list=pi_trainable)
         
-        self.sess.run(tf.global_variables_initializer())
+        self.sess.run(tf.compat.v1.global_variables_initializer())
         
-        self.merge_op = tf.summary.merge_all()
+        self.merge_op = tf.compat.v1.summary.merge_all()
 
     def action(self, obs, stochastic=True):
         obs = np.stack([obs]).astype(dtype=np.float32)
@@ -212,8 +212,8 @@ class PPOAgent:
                                    gaes=batch_samples[4])[0]
         
             self.writer.add_summary(summary, self.iteration)
-            self.writer.add_summary(tf.Summary(value=[
-                                    tf.Summary.Value(tag='score', 
+            self.writer.add_summary(tf.compat.v1.Summary(value=[
+                                    tf.compat.v1.Summary.Value(tag='score', 
                                                      simple_value=score)]), 
                                     self.iteration)
             

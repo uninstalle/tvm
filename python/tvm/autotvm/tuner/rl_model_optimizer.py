@@ -9,7 +9,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from .model_based_tuner import ModelOptimizer, knob2point, point2knob
+from .model_based_tuner import ModelOptimizer
 from .reinforcement_learning import ppo_core
 
 logger = logging.getLogger('autotvm')
@@ -35,10 +35,10 @@ class ReinforcementLearningOptimizer(ModelOptimizer):
         self.act_space = [3] * len(self.dims)
 
         # NOTE this seems sometimes cause hang after few tasks...
-        sess = tf.get_default_session()
+        sess = tf.compat.v1.get_default_session()
         if sess != None:
             sess.close()
-        tf.reset_default_graph()
+        tf.compat.v1.reset_default_graph()
 
         self.policy = ppo_core.PolicyWithValue(self.obs_space, self.act_space, 'policy')
         self.old_policy = ppo_core.PolicyWithValue(self.obs_space, self.act_space, 'old_policy')
@@ -195,3 +195,19 @@ def random_walk(p, dims):
 
     # transform to index form
     return knob2point(new, dims)
+
+def point2knob(p, dims):
+    """convert point form (single integer) to knob form (vector)"""
+    knob = []
+    for dim in dims:
+        knob.append(p % dim)
+        p //= dim
+    return knob
+
+
+def knob2point(knob, dims):
+    """convert knob form (vector) to point form (single integer)"""
+    p = 0
+    for j, k in enumerate(knob):
+        p += int(np.prod(dims[:j])) * k
+    return p
