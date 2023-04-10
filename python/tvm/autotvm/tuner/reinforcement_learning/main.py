@@ -22,15 +22,16 @@ policy = PolicyWithValue(obs_space, act_space, 'policy')
 old_policy = PolicyWithValue(obs_space, act_space, 'old_policy')
 
 agent = PPOAgent(policy, old_policy, 
-                 horizon=-1, 
-                 learning_rate=1e-4, 
-                 epochs=4, 
-                 batch_size=64, 
-                 gamma=0.95, 
-                 lmbd=1.0, 
-                 clip_value=0.2, 
-                 value_coeff=1.0, 
-                 entropy_coeff=0.01)
+                 horizon=-1,
+                 learning_rate=1e-3,
+                 epochs=3,
+                 batch_size=64,
+                 gamma=0.9,
+                 lmbd=0.99,
+                 clip_value=0.3,
+                 value_coeff=1.0,
+                 entropy_coeff=0.1
+                 )
 
 # Initialize the agent
 for e in range(2000):

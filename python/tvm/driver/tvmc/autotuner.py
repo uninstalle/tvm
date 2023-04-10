@@ -688,7 +688,9 @@ def tune_tasks(
         elif tuner == "gridsearch":
             tuner_obj = GridSearchTuner(tsk)
         elif tuner == "reinforcement_learning":
-            tuner_obj = RLTuner(tsk,sampler="adaptive")
+            tuner_obj = RLTuner(tsk)
+        elif tuner == "reinforcement_learning_adaptive":
+            tuner_obj = RLTuner(tsk, sampler="adaptive")
         else:
             raise TVMCException("invalid tuner: %s " % tuner)
 
